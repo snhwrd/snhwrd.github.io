@@ -1,2 +1,2 @@
 qp:
- quarto preview index.qmd &
+ quarto preview index.qmd

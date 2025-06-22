@@ -1,0 +1,74 @@
+---
+title: "Record terminal commands with `uvx` and `asciinema`"
+description: "easily make gifs for docs and tutorials"
+date: "07-22-2025"
+author: "Sean Howard"
+categories:
+  - tools
+  - python
+  - uv
+code-fold: true
+---
+
+Often it is useful to record a terminal session, either to provide instructions for basic CLI usage, document getting started, or to share a bug with a team. Screen capture tools are often clunky and capture more than just the terminal. The popular [`asciicinema`](https://docs.asciinema.org/) package provides a library for recording brief terminal sessions. But this saves the session in a specialized `.cast` file format, where often I would rather have a gif to post to a chat or link in a website. This can be done with the `agg` utility, but requires an additional step and remembering the command line arguments.
+
+Also, as someone who develops in python I'd like to use the `asciinema` tool without having it in my virtual environment. This is where the `uv` and the `uvx` command comes in. `uvx` allows running a python library's cli by managing the creation and teardown of a virtual environment. Because of `uv`'s speed and local caching of whl files, the process is barely noticeable.
+
+Combining these two tools, I created a script with a couple rounds of AI feedback that I can drop in my `~/.zshrc` file.
+
+<details>
+  <summary>Show the code</summary>
+
+```bash
+# Function to record an asciinema session and convert it to a GIF
+# Usage: recgif <output_gif_name> [asciinema_rec_options...]
+recgif() {
+    if [ -z "$1" ]; then
+        echo "Usage: recgif <output_gif_name> [asciinema_rec_options...]"
+        return 1
+    fi
+
+    local output_gif_name_raw="$1"
+    shift # Remove the first argument (output_gif_name_raw) from the argument list
+    local asciinema_rec_options=("$@") # Capture all remaining arguments for asciinema rec
+
+    local output_gif_name # This will store the name with .gif only if needed
+    local temp_cast_file
+
+    # Check if the output_gif_name_raw already ends with .gif
+    if [[ "$output_gif_name_raw" == *.gif ]]; then
+        output_gif_name="$output_gif_name_raw"
+    else
+        output_gif_name="${output_gif_name_raw}.gif"
+    fi
+
+    # Create a unique temporary file for the asciinema cast.
+    # The temporary file name will now include the base output name as a prefix.
+    temp_cast_file=$(mktemp --tmpdir="${TMPDIR:-/tmp}" "${output_gif_name_raw}.XXXXXX.cast")
+
+    echo "Recording asciinema session. Press Ctrl+D or type 'exit' to finish..."
+    # Record the asciinema session using uvx, saving to the temporary file.
+    # All additional arguments passed to recgif are forwarded to asciinema rec.
+    # This command blocks until the recording is finished (user presses Ctrl+D or types 'exit').
+    uvx asciinema rec "${asciinema_rec_options[@]}" "$temp_cast_file"
+
+    if [ -f "$temp_cast_file" ]; then
+        echo "Converting cast to GIF: ${output_gif_name}"
+        # Convert the asciinema cast to a GIF using agg directly,
+        # with the specified font family.
+        agg --font-family "MesloLGS Nerd Font Mono" --theme "monaki" "$temp_cast_file" "$output_gif_name"
+
+        echo "Cleaning up temporary cast file: ${temp_cast_file}"
+        # Remove the temporary asciinema cast file
+        rm "$temp_cast_file"
+        echo "GIF created successfully: ${output_gif_name}"
+    else
+        echo "Asciinema recording failed or cast file not found. No GIF was created."
+    fi
+}
+```
+</details>
+
+Here it is in action:
+
+![Example gif](example.gif)
