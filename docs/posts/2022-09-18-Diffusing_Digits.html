@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.32">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2022-09-18">
+<meta name="description" content="Generating MNIST Digits from noise with HuggingFace Diffusers">
+
+<title>Diffusing Digits – Sean Howard</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-37eea08aefeeee20ff55810ff984fec1.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-7b1b06e26e1e2798ccde3208f86b5bbd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../_static/styles.css">
+</head>
+
+<body class="nav-sidebar docked quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">
+      Sean Howard
+      </li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="../">Sean Howard</a> 
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#diffusing-digits---generating-mnist-digits-from-noise-with-huggingface-diffusers" id="toc-diffusing-digits---generating-mnist-digits-from-noise-with-huggingface-diffusers" class="nav-link active" data-scroll-target="#diffusing-digits---generating-mnist-digits-from-noise-with-huggingface-diffusers">Diffusing Digits - Generating MNIST Digits from noise with HuggingFace Diffusers</a>
+  <ul class="collapse">
+  <li><a href="#diffusion-models---training" id="toc-diffusion-models---training" class="nav-link" data-scroll-target="#diffusion-models---training">Diffusion Models - Training</a></li>
+  <li><a href="#diffusion-models---sampling" id="toc-diffusion-models---sampling" class="nav-link" data-scroll-target="#diffusion-models---sampling">Diffusion Models - Sampling</a></li>
+  <li><a href="#outline" id="toc-outline" class="nav-link" data-scroll-target="#outline">Outline</a></li>
+  <li><a href="#defining-hyperparameters" id="toc-defining-hyperparameters" class="nav-link" data-scroll-target="#defining-hyperparameters">Defining Hyperparameters</a></li>
+  <li><a href="#preparing-mnist-dataset" id="toc-preparing-mnist-dataset" class="nav-link" data-scroll-target="#preparing-mnist-dataset">Preparing MNIST Dataset</a>
+  <ul class="collapse">
+  <li><a href="#downloading-mnist-with-huggingface-datasets" id="toc-downloading-mnist-with-huggingface-datasets" class="nav-link" data-scroll-target="#downloading-mnist-with-huggingface-datasets">Downloading MNIST with HuggingFace <code>datasets</code></a></li>
+  <li><a href="#data-preprocessing-and-augmentation" id="toc-data-preprocessing-and-augmentation" class="nav-link" data-scroll-target="#data-preprocessing-and-augmentation">Data Preprocessing and Augmentation</a></li>
+  </ul></li>
+  <li><a href="#creating-the-diffusion-model" id="toc-creating-the-diffusion-model" class="nav-link" data-scroll-target="#creating-the-diffusion-model">Creating the Diffusion Model</a>
+  <ul class="collapse">
+  <li><a href="#u-net-for-mnist" id="toc-u-net-for-mnist" class="nav-link" data-scroll-target="#u-net-for-mnist">U-Net for MNIST</a></li>
+  <li><a href="#noise-scheduler" id="toc-noise-scheduler" class="nav-link" data-scroll-target="#noise-scheduler">Noise Scheduler</a></li>
+  <li><a href="#optimizer" id="toc-optimizer" class="nav-link" data-scroll-target="#optimizer">Optimizer</a></li>
+  <li><a href="#learning-rate-scheduler" id="toc-learning-rate-scheduler" class="nav-link" data-scroll-target="#learning-rate-scheduler">Learning Rate Scheduler</a></li>
+  </ul></li>
+  <li><a href="#training-the-model" id="toc-training-the-model" class="nav-link" data-scroll-target="#training-the-model">Training the Model</a>
+  <ul class="collapse">
+  <li><a href="#working-with-memory-restrictions" id="toc-working-with-memory-restrictions" class="nav-link" data-scroll-target="#working-with-memory-restrictions">Working with memory restrictions</a></li>
+  <li><a href="#creating-and-running-training-loop" id="toc-creating-and-running-training-loop" class="nav-link" data-scroll-target="#creating-and-running-training-loop">Creating and Running Training Loop</a></li>
+  </ul></li>
+  <li><a href="#create-a-sampling-function" id="toc-create-a-sampling-function" class="nav-link" data-scroll-target="#create-a-sampling-function">Create a sampling function</a></li>
+  <li><a href="#sample-some-good-looking-digits" id="toc-sample-some-good-looking-digits" class="nav-link" data-scroll-target="#sample-some-good-looking-digits">Sample some good looking digits!</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Diffusing Digits</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">Intros</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    Generating MNIST Digits from noise with HuggingFace Diffusers
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">September 18, 2022</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="diffusing-digits---generating-mnist-digits-from-noise-with-huggingface-diffusers" class="level1">
+<h1>Diffusing Digits - Generating MNIST Digits from noise with HuggingFace Diffusers</h1>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><a href="https://colab.research.google.com/github/st-howard/blog-notebooks/blob/main/MNIST-Diffusion/Diffusion%20Digits%20-%20Generating%20MNIST%20Digits%20from%20noise%20with%20HuggingFace%20Diffusers.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" class="img-fluid figure-img"></a></p>
+<figcaption>Open in Colab</figcaption>
+</figure>
+</div>
+<figure class="figure">
+<video width="480" height="360" controls="">
+<source src="../assets/img/blogs/Diffusing_Digits_files/diffusion.mp4" type="video/mp4">
+</video>
+<figcaption>
+Generating MNIST digits with diffusion
+</figcaption>
+</figure>
+<p>Diffusion models have become the state of the art generative model by learning how to progressively remove “noise” from a randomly generated noise field until the sample matches the training data distribution. Diffusion models are a fundamental part of several noteworthy text to image models, including Imagen, DALLE-2, and Stable Diffusion. However, they are capabilities beyond text to image generation and are applicable to a large variety of generative tasks.</p>
+<p>Here a minimal diffusion model is trained on the iconic <a href="http://yann.lecun.com/exdb/mnist/">MNIST Digits</a> database using several <a href="https://huggingface.co/">HuggingFace</a> libraries. The flow follows that of the <a href="https://github.com/huggingface/diffusers/blob/main/docs/source/training/overview.mdx">example</a> HuggingFace notebook for unconditional image generation. I chose HuggingFace libraries for the implementation to learn their framework and I found that they were a nice balance between coding everything up in raw PyTorch (as was done in <a href="https://huggingface.co/blog/annotated-diffusion">HuggingFace annotated diffusion blog post</a>) and tailored implementations such as Phil Wang’s <a href="https://github.com/lucidrains/denoising-diffusion-pytorch">denoising-diffusion-pytorch</a>.</p>
+<details>
+<summary>
+<p>Diffusion Models - Quick Explanation</p>
+</summary>
+<p>Conceptually, diffusion models are built upon a series of noising and denoising steps. In the noising process, random Gaussian noise is iteratively added to data (typically an image but can be any numeric datatype). After many steps of adding noise, the original data becomes indistinguishable from Gaussian noise. This noising process is going from <strong>right to left</strong> in the below figure from the <a href="https://arxiv.org/abs/2006.11239">Denoising Diffusion Probabilistic Models paper</a> (often referred to as DDPM). In practice, getting from the original data to the step <span class="math display">\[t\]</span> of the noising process can be done in one go based upon convenient properties of Gaussians.</p>
+<figure class="figure">
+<img src="https://huggingface.co/blog/assets/78_annotated-diffusion/diffusion_figure.png" width="90%" class="figure-img">
+</figure>
+<p>The real juice of diffusion models is the denoising process. In the figure above, each denoising step (<strong>left to right</strong> in above figure), attempts to remove the noise added from previous step. Given noisy data, the diffusion model tries to predict the noise present in the data (slightly different to the above depiction which shows the model learning the conditional probability distribution <span class="math display">\[p(x_{t-1}
+\vert x_t)\]</span>). This noise is iteratively removed until the denoised data, which by characteristic of the training distribution, is left.</p>
+<p>Diffusion models can be broken down into two algorithms, one for training and one for sampling.</p>
+<section id="diffusion-models---training" class="level3">
+<h3 class="anchored" data-anchor-id="diffusion-models---training">Diffusion Models - Training</h3>
+<p>The training algorithm is relatively simple and follow the steps - Take data from training distribution - Randomly select a step within the noisig/denoising process - Sample random Gaussian noise with zero mean and unit variance - Take noise field and data from training distribution and noise it to selected step from noising process. - Predict the noise present in the noisy data - Update model based upon mean squared error of actual noise and predicted noise</p>
+<p>Which is shown in the psuedocode from the <a href="https://arxiv.org/abs/2006.11239">Ho et. al paper</a>.</p>
+<figure class="figure">
+<img src="https://huggingface.co/blog/assets/78_annotated-diffusion/training.png" width="50%" class="figure-img">
+<figcaption>
+</figcaption>
+</figure>
+</section>
+<section id="diffusion-models---sampling" class="level3">
+<h3 class="anchored" data-anchor-id="diffusion-models---sampling">Diffusion Models - Sampling</h3>
+<p>With a model that takes a noisy image and predicts the noise given the step in the noising chain, can iteratively denoise the data with the following steps - Generate the fully noised data at last step <span class="math display">\[T\]</span> - For each step in the chain, predict the noise in the image and remove some fraction of it.</p>
+<p>Which is shown in the pseudocode</p>
+<figure class="figure">
+<img src="https://huggingface.co/blog/assets/78_annotated-diffusion/sampling.png" width="50%" class="figure-img">
+<figcaption>
+</figcaption>
+</figure>
+<p>There are details about noise and learning rate schedules which were omitted from the above, but covered in the <a href="https://huggingface.co/blog/annotated-diffusion">annotated diffusion blog post</a></p>
+</section></details>
+</section>
+<section id="outline" class="level2">
+<h2 class="anchored" data-anchor-id="outline">Outline</h2>
+<p>In creating a diffusion model with HuggingFace, I found there to be <strong>4</strong> main stages after choosing the hyperparameters, each with defined subtasks. I’ve shown an outline below</p>
+<ol start="0" type="1">
+<li><a href="#defining-hyperparameters">Defining Hyperparameters</a> <!-- omit in toc --></li>
+<li><a href="#preparing-mnist-dataset">Preparing Dataset</a>
+<ul>
+<li><a href="#downloading-mnist-with-huggingface-datasets">Downloading MNIST with HuggingFace <code>datasets</code></a></li>
+<li><a href="#data-preprocessing-and-augmentation">Data preprocessing and augmentation</a></li>
+</ul></li>
+<li><a href="#creating-the-diffusion-model">Creating the Diffusion Model</a>
+<ul>
+<li><a href="#u-net-for-mnist">U-Net for MNIST</a></li>
+<li><a href="#noise-scheduler">Noise Scheduler</a></li>
+<li><a href="#optimizer">Optimizer</a></li>
+<li><a href="#learning-rate-scheduler">Learning Rate Scheduler</a></li>
+</ul></li>
+<li><a href="#training-the-model">Training the Model</a>
+<ul>
+<li><a href="#working-with-memory-restrictions">Working with memory restrictions</a></li>
+<li><a href="#creating-and-running-training-loop">Creating and running training script</a></li>
+</ul></li>
+<li><a href="#sample-some-good-looking-digits">Sampling Images</a></li>
+</ol>
+<details>
+<summary>
+Import libraries
+</summary>
+<div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Pytorch</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> torch</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> torchvision</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># HuggingFace</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> datasets</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> diffusers</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> accelerate</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Training and Visualization</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> tqdm.auto <span class="im">import</span> tqdm</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> PIL</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</section>
+<section id="defining-hyperparameters" class="level2">
+<h2 class="anchored" data-anchor-id="defining-hyperparameters">Defining Hyperparameters</h2>
+<p>In the training config class shown below, I’ve chosen an image size of <span class="math display">\[32 \times 32\]</span> instead of the default MNIST resolution of <span class="math display">\[28 \times 28\]</span>. This slight upscaling is in order to make the image width/height be a power of 2, i.e.&nbsp;<span class="math display">\[ 2^5 \]</span>. In the default U-Net architecture, each downsampling layer reduces the width and height of the image by 2. Therefore after the three downsampling blocks I used in the U-Net, the output size will be <span class="math display">\[4 \times 4 \times N \]</span>, where <span class="math display">\[N\]</span> is a configurable parameter of the model architecture. As the width and height of the image is reduced, the number of learned channels increases. So in the U-Net configured here, the bottleneck layer has dimension of <span class="math display">\[4 \times 4 \times 512\]</span>.</p>
+<p>The batch sizes chosen are done in order to comfortably fit on a 8 GB memory GPU. I find that training occupies approximately 4 GB of memory. Since one epoch contains all sixty thousand training examples, only a couple epochs are needed for the model to converge, with most of the learning being done within the first epoch.</p>
+<p>The <code>lr_warmup_steps</code> is the number of mini-batches where the learning rate is increased until hitting the base learning rate listed in <code>learning_rate</code>. After the learning rate reaches this value, a cosine scheduler is used to slowly decrease the learning rate, as described in <a href="https://arxiv.org/abs/2102.09672">Improved Denoising Diffusion Probabilistic Models</a>.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> dataclasses <span class="im">import</span> dataclass</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> TrainingConfig:</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    image_size<span class="op">=</span><span class="dv">32</span> <span class="co">#Resize the digits to be a power of two</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    train_batch_size <span class="op">=</span> <span class="dv">32</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    eval_batch_size <span class="op">=</span> <span class="dv">32</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    num_epochs <span class="op">=</span> <span class="dv">5</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    gradient_accumulation_steps <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    learning_rate <span class="op">=</span> <span class="fl">1e-4</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    lr_warmpup_steps <span class="op">=</span> <span class="dv">500</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    mixed_precision <span class="op">=</span> <span class="st">'fp16'</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    seed <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>config <span class="op">=</span> TrainingConfig()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="preparing-mnist-dataset" class="level2">
+<h2 class="anchored" data-anchor-id="preparing-mnist-dataset">Preparing MNIST Dataset</h2>
+<section id="downloading-mnist-with-huggingface-datasets" class="level3">
+<h3 class="anchored" data-anchor-id="downloading-mnist-with-huggingface-datasets">Downloading MNIST with HuggingFace <code>datasets</code></h3>
+<p>HuggingFace has almost ten thousand dataset for download, which can be searched from the <a href="https://huggingface.co/datasets">datasets tab</a> of their website. They can be downloaded with their <code>datasets</code> python library and the <a href="https://huggingface.co/docs/datasets/loading"><code>load_dataset()</code></a> function.</p>
+<p>If not specified, the data will be downloaded to the <code>~/.cache</code> directory. If you want to put the files in another location, either specify the <code>data_dir</code> optional argument or change the environment variable <code>HF_DATASETS_CACHE</code> to the desired path.</p>
+<p>Here MNIST digits are loaded into a <code>Dataset</code> object, where metadata, labels, and images can be accessed in a manner similar to python dictionaries.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>mnist_dataset <span class="op">=</span> datasets.load_dataset(<span class="st">'mnist'</span>, split<span class="op">=</span><span class="st">'train'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>The dataset object is conveniently accessible with methods similar to a python dictionary</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>mnist_dataset</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<pre><code>Dataset({
+    features: ['image', 'label'],
+    num_rows: 60000
+})</code></pre>
+<div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>mnist_dataset[<span class="dv">0</span>][<span class="st">"image"</span>].resize((<span class="dv">256</span>, <span class="dv">256</span>)).show()</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Image Size:"</span>, mnist_dataset[<span class="dv">0</span>][<span class="st">"image"</span>].size)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Digit is labelled:"</span>, mnist_dataset[<span class="dv">0</span>][<span class="st">'label'</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<figure class="figure">
+<img src="../assets/img/blogs/Diffusing_Digits_files/Diffusion_Digits_0.png" width="15%" class="figure-img">
+</figure>
+<pre><code>Image Size: (28, 28)
+Digit is labelled: 5</code></pre>
+</section>
+<section id="data-preprocessing-and-augmentation" class="level3">
+<h3 class="anchored" data-anchor-id="data-preprocessing-and-augmentation">Data Preprocessing and Augmentation</h3>
+<p>As downloaded, the MNIST dataset contains 60,000 PIL images with pixel values in the range of <span class="math display">\[[0,255]\]</span>. The data must be scaled, resized, and turned into a tensor for ingestion by a PyTorch model. These transformations can be handled by torchvision’s transforms library. Transform objects can be sequentially listed in a Compose constructor, which will apply then apply the transformations when an image is passed as an argument.</p>
+<p>Three transforms are used. The first transforms the image to 32x32, in order to for the image width/height to be a power of two. The second transform turns the PIL image to a PyTorch tensor. When converting to a PyTorch tensor, the pixel range is transformed from <span class="math display">\[[0,255]\]</span> to <span class="math display">\[[0,1]\]</span>. However, for the diffusion model the required pixel value range needs to be <span class="math display">\[[-1,1]\]</span> since the Gaussian noise is zero mean, unit variance. Therefore, a lambda function is used to define a transform from <span class="math display">\[[0,1]\]</span> to <span class="math display">\[[-1,1]\]</span>.</p>
+<p>The <code>Datasets</code> object has a method <code>set_transform()</code> which applies a function which takes the dataset object as an argument. Here the method is used to apply the torchvision transforms to the MNIST dataset.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> transform(dataset):</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    preprocess <span class="op">=</span> torchvision.transforms.Compose(</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>        [</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>            torchvision.transforms.Resize(</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>                (config.image_size, config.image_size)),</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>            torchvision.transforms.ToTensor(),</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>            torchvision.transforms.Lambda(<span class="kw">lambda</span> x: <span class="dv">2</span><span class="op">*</span>(x<span class="op">-</span><span class="fl">0.5</span>)),</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>        ]</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    images <span class="op">=</span> [preprocess(image) <span class="cf">for</span> image <span class="kw">in</span> dataset[<span class="st">"image"</span>]]</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> {<span class="st">"images"</span>: images}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>mnist_dataset.reset_format()</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>mnist_dataset.set_transform(transform)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Once the dataset has been prepared with the proper transformers, it is ready to be passed directly into a PyTorch DataLoader.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>train_dataloader <span class="op">=</span> torch.utils.data.DataLoader(</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    mnist_dataset,</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    batch_size <span class="op">=</span> config.train_batch_size,</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    shuffle <span class="op">=</span> <span class="va">True</span>,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+</section>
+<section id="creating-the-diffusion-model" class="level2">
+<h2 class="anchored" data-anchor-id="creating-the-diffusion-model">Creating the Diffusion Model</h2>
+<section id="u-net-for-mnist" class="level3">
+<h3 class="anchored" data-anchor-id="u-net-for-mnist">U-Net for MNIST</h3>
+<p>The workhorse of the denoising diffusion model is a U-Net, which is predicts the noise present in the input image conditioned on the step in the noising process. HuggingFace’s Diffusers library has default a <a href="https://huggingface.co/docs/diffusers/api/models#diffusers.UNet2DModel">U-Net class</a> which creates a PyTorch model based upon the input values. Here the input and output channels are set to one since the image is black and white. The rest of the parameters mirror the choices found in the example notebook from HuggingFace.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> diffusers.UNet2DModel(</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    sample_size<span class="op">=</span>config.image_size,</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    in_channels<span class="op">=</span><span class="dv">1</span>,</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    out_channels<span class="op">=</span><span class="dv">1</span>,</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    layers_per_block<span class="op">=</span><span class="dv">2</span>,</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    block_out_channels<span class="op">=</span>(<span class="dv">128</span>,<span class="dv">128</span>,<span class="dv">256</span>,<span class="dv">512</span>),</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    down_block_types<span class="op">=</span>(</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>        <span class="st">"DownBlock2D"</span>,</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">"DownBlock2D"</span>,</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>        <span class="st">"AttnDownBlock2D"</span>,</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>        <span class="st">"DownBlock2D"</span>,</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>    up_block_types<span class="op">=</span>(</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>        <span class="st">"UpBlock2D"</span>,</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>        <span class="st">"AttnUpBlock2D"</span>,</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>        <span class="st">"UpBlock2D"</span>,</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>        <span class="st">"UpBlock2D"</span>,</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Check that the input image to the model and the output have the same shape</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>sample_image <span class="op">=</span> mnist_dataset[<span class="dv">0</span>][<span class="st">"images"</span>].unsqueeze(<span class="dv">0</span>)</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Input shape:"</span>, sample_image.shape)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<pre><code>Input shape: torch.Size([1, 1, 32, 32])</code></pre>
+<div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">'Output shape:'</span>, model(sample_image, timestep<span class="op">=</span><span class="dv">0</span>)[<span class="st">"sample"</span>].shape)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<pre><code>Output shape: torch.Size([1, 1, 32, 32])</code></pre>
+</section>
+<section id="noise-scheduler" class="level3">
+<h3 class="anchored" data-anchor-id="noise-scheduler">Noise Scheduler</h3>
+<p>In diffusion models, the noise is added to images dependent on the step within noising/denoising process. In the original <a href="https://arxiv.org/abs/2006.11239">DDPM paper</a>, the strength of the noise added to the image (i.e.&nbsp;the variance of the zero mean Gaussian) increased linearly with time steps. The Diffusers library has a <a href="https://huggingface.co/docs/diffusers/v0.3.0/en/api/schedulers#diffusers.DDPMScheduler">noise scheduler object</a> which handles the amount of noise to be added for a given step. The default values for noise are taken from the DDPM paper, but there are optional arguments to change the starting and ending noise strength, along with the how the noise changes with across steps.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>noise_scheduler <span class="op">=</span> diffusers.DDPMScheduler(num_train_timesteps<span class="op">=</span><span class="dv">200</span>, tensor_format<span class="op">=</span><span class="st">'pt'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>We can take a digit and use the scheduler object to add noise. Below is the</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Original Digit"</span>)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>torchvision.transforms.ToPILImage()(sample_image.squeeze(<span class="dv">1</span>)).resize((<span class="dv">256</span>,<span class="dv">256</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<pre><code>Original Digit</code></pre>
+<figure class="figure">
+<img src="../assets/img/blogs/Diffusing_Digits_files/Diffusion_Digits_1.png" width="15%" class="figure-img">
+</figure>
+<div class="sourceCode" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>noise <span class="op">=</span> torch.randn(sample_image.shape)</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>timesteps <span class="op">=</span> torch.LongTensor([<span class="dv">199</span>])</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>noisy_image <span class="op">=</span> noise_scheduler.add_noise(sample_image,noise,timesteps)</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Fully Noised Digit"</span>)</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>torchvision.transforms.ToPILImage()(noisy_image.squeeze(<span class="dv">1</span>)).resize((<span class="dv">256</span>,<span class="dv">256</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<pre><code>Fully Noised Digit</code></pre>
+<figure class="figure">
+<img src="../assets/img/blogs/Diffusing_Digits_files/Diffusion_Digits_2.png" width="15%" class="figure-img">
+</figure>
+</section>
+<section id="optimizer" class="level3">
+<h3 class="anchored" data-anchor-id="optimizer">Optimizer</h3>
+<p>Let’s have the U-Net can learn with the <a href="https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html">AdamW optimizer</a>.</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>optimizer <span class="op">=</span> torch.optim.AdamW(model.parameters(),lr<span class="op">=</span>config.learning_rate)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="learning-rate-scheduler" class="level3">
+<h3 class="anchored" data-anchor-id="learning-rate-scheduler">Learning Rate Scheduler</h3>
+<p>As mentioned previously, in <a href="https://arxiv.org/abs/2102.09672">Improved Denoising Diffusion Probabilistic Models</a>, they find a learning rate schedule which first warmups for a fixed number of steps and then follows a cosine schedule thereafter to be effective in training the model. The diffusers library has a <a href="https://huggingface.co/docs/transformers/main_classes/optimizer_schedules#transformers.get_cosine_schedule_with_warmup">method</a> which creates a PyTorch learning rate scheduler which follows the advice given in this paper.</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Cosine learning rate scheduler</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>lr_scheduler <span class="op">=</span> diffusers.optimization.get_cosine_schedule_with_warmup(</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>    optimizer<span class="op">=</span>optimizer,</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>    num_warmup_steps<span class="op">=</span>config.lr_warmpup_steps,</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>    num_training_steps<span class="op">=</span>(<span class="bu">len</span>(train_dataloader)<span class="op">*</span>config.num_epochs),</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+</section>
+<section id="training-the-model" class="level2">
+<h2 class="anchored" data-anchor-id="training-the-model">Training the Model</h2>
+<section id="working-with-memory-restrictions" class="level3">
+<h3 class="anchored" data-anchor-id="working-with-memory-restrictions">Working with memory restrictions</h3>
+<p>Running this on my local machine, I found that unless I set a limit on the VRAM accessible to PyTorch it would use it all up. This is good for maximizing utilization of a GPU cluster, but bad when iterating on a machine where the same GPU is rendering the operating system.</p>
+<p>To get around this, there is a useful <a href="https://pytorch.org/docs/stable/generated/torch.cuda.set_per_process_memory_fraction.html">cuda function</a> within PyTorch which sets the maximum fraction of total memory accessible. I’ve set this to use 7 GB out of 8 GB, just so computer doesn’t come to a standstill.</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>torch.cuda.set_per_process_memory_fraction(<span class="fl">7.</span><span class="op">/</span><span class="fl">8.</span>, <span class="dv">0</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="creating-and-running-training-loop" class="level3">
+<h3 class="anchored" data-anchor-id="creating-and-running-training-loop">Creating and Running Training Loop</h3>
+<p>The training function first creates a HuggingFace <a href="https://huggingface.co/docs/accelerate/v0.12.0/en/package_reference/accelerator#accelerator"><code>accelerator</code></a> object. The purpose of the <code>accelerator</code> object is to automatically handle device assignment for PyTorch objects when training on multiple devices and to make the code portable when running in multiple setups. Once created, the <code>accelerator</code> has a method <code>prepare</code> which takes all of the model/U-Net, optimizer, dataloader, and learning rate scheduler and automatically detects the correct device(s) and makes the appropriate <code>.to()</code> assignments.</p>
+<p>After those objects are “prepared”, the training has an outer <code>for</code> loop for each epoch and an inner <code>for</code> loop for each mini-batch. In each mini-batch, a set of digits is taken from the dataset. Random noise with the same size of the minibatch is then sampled. Then, for each image in the minibatch, a random step in the noising process is (uniformly) selected. Noise is then added to each image based upon the randomly sampled noise and the randomly selected step. The U-Net then predicts the noise added to the image conditioned on the selected step. A mean squared error loss is then calculated between the predicted noise and the actual noise added to the image. This loss is then used to update the weights for each mini-batch.</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> train_loop(</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>        config,</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>        model,</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>        noise_scheduler,</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>        optimizer,</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>        train_dataloader,</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>        lr_scheduler):</span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>    accelerator <span class="op">=</span> accelerate.Accelerator(</span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a>        mixed_precision<span class="op">=</span>config.mixed_precision,</span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a>        gradient_accumulation_steps<span class="op">=</span>config.gradient_accumulation_steps,</span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a>    model, optimizer, train_dataloader, lr_scheduler <span class="op">=</span> accelerator.prepare(</span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a>        model, optimizer, train_dataloader, lr_scheduler</span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> epoch <span class="kw">in</span> <span class="bu">range</span>(config.num_epochs):</span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a>        progress_bar <span class="op">=</span> tqdm(total<span class="op">=</span><span class="bu">len</span>(train_dataloader),</span>
+<span id="cb24-20"><a href="#cb24-20" aria-hidden="true" tabindex="-1"></a>                            disable<span class="op">=</span><span class="kw">not</span> accelerator.is_local_main_process)</span>
+<span id="cb24-21"><a href="#cb24-21" aria-hidden="true" tabindex="-1"></a>        progress_bar.set_description(<span class="ss">f"Epoch </span><span class="sc">{</span>epoch<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb24-22"><a href="#cb24-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-23"><a href="#cb24-23" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> step, batch <span class="kw">in</span> <span class="bu">enumerate</span>(train_dataloader):</span>
+<span id="cb24-24"><a href="#cb24-24" aria-hidden="true" tabindex="-1"></a>            clean_images <span class="op">=</span> batch[<span class="st">'images'</span>]</span>
+<span id="cb24-25"><a href="#cb24-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-26"><a href="#cb24-26" aria-hidden="true" tabindex="-1"></a>            noise <span class="op">=</span> torch.randn(clean_images.shape).to(clean_images.device)</span>
+<span id="cb24-27"><a href="#cb24-27" aria-hidden="true" tabindex="-1"></a>            batch_size <span class="op">=</span> clean_images.shape[<span class="dv">0</span>]</span>
+<span id="cb24-28"><a href="#cb24-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-29"><a href="#cb24-29" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Sample a set of random time steps for each image in mini-batch</span></span>
+<span id="cb24-30"><a href="#cb24-30" aria-hidden="true" tabindex="-1"></a>            timesteps <span class="op">=</span> torch.randint(</span>
+<span id="cb24-31"><a href="#cb24-31" aria-hidden="true" tabindex="-1"></a>                <span class="dv">0</span>, noise_scheduler.num_train_timesteps, (batch_size,), device<span class="op">=</span>clean_images.device)</span>
+<span id="cb24-32"><a href="#cb24-32" aria-hidden="true" tabindex="-1"></a>            </span>
+<span id="cb24-33"><a href="#cb24-33" aria-hidden="true" tabindex="-1"></a>            noisy_images<span class="op">=</span>noise_scheduler.add_noise(clean_images, noise, timesteps)</span>
+<span id="cb24-34"><a href="#cb24-34" aria-hidden="true" tabindex="-1"></a>            </span>
+<span id="cb24-35"><a href="#cb24-35" aria-hidden="true" tabindex="-1"></a>            <span class="cf">with</span> accelerator.accumulate(model):</span>
+<span id="cb24-36"><a href="#cb24-36" aria-hidden="true" tabindex="-1"></a>                noise_pred <span class="op">=</span> model(noisy_images,timesteps)[<span class="st">"sample"</span>]</span>
+<span id="cb24-37"><a href="#cb24-37" aria-hidden="true" tabindex="-1"></a>                loss <span class="op">=</span> torch.nn.functional.mse_loss(noise_pred,noise)</span>
+<span id="cb24-38"><a href="#cb24-38" aria-hidden="true" tabindex="-1"></a>                accelerator.backward(loss)</span>
+<span id="cb24-39"><a href="#cb24-39" aria-hidden="true" tabindex="-1"></a>                </span>
+<span id="cb24-40"><a href="#cb24-40" aria-hidden="true" tabindex="-1"></a>                accelerator.clip_grad_norm_(model.parameters(),<span class="fl">1.0</span>)</span>
+<span id="cb24-41"><a href="#cb24-41" aria-hidden="true" tabindex="-1"></a>                optimizer.step()</span>
+<span id="cb24-42"><a href="#cb24-42" aria-hidden="true" tabindex="-1"></a>                lr_scheduler.step()</span>
+<span id="cb24-43"><a href="#cb24-43" aria-hidden="true" tabindex="-1"></a>                optimizer.zero_grad()</span>
+<span id="cb24-44"><a href="#cb24-44" aria-hidden="true" tabindex="-1"></a>                </span>
+<span id="cb24-45"><a href="#cb24-45" aria-hidden="true" tabindex="-1"></a>            progress_bar.update(<span class="dv">1</span>)</span>
+<span id="cb24-46"><a href="#cb24-46" aria-hidden="true" tabindex="-1"></a>            logs <span class="op">=</span> {</span>
+<span id="cb24-47"><a href="#cb24-47" aria-hidden="true" tabindex="-1"></a>                <span class="st">"loss"</span> : loss.detach().item(),</span>
+<span id="cb24-48"><a href="#cb24-48" aria-hidden="true" tabindex="-1"></a>                <span class="st">"lr"</span> : lr_scheduler.get_last_lr()[<span class="dv">0</span>],</span>
+<span id="cb24-49"><a href="#cb24-49" aria-hidden="true" tabindex="-1"></a>            }</span>
+<span id="cb24-50"><a href="#cb24-50" aria-hidden="true" tabindex="-1"></a>            progress_bar.set_postfix(<span class="op">**</span>logs)</span>
+<span id="cb24-51"><a href="#cb24-51" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb24-52"><a href="#cb24-52" aria-hidden="true" tabindex="-1"></a>    accelerator.unwrap_model(model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Once the training loop set up, the function along with its arguments can be passed to the accelerate library’s <a href="https://huggingface.co/docs/accelerate/v0.12.0/en/basic_tutorials/notebook#using-the-notebooklauncher"><code>notebook launcher</code></a> to train within the notebook.</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>args <span class="op">=</span> (config, model, noise_scheduler, optimizer, train_dataloader, lr_scheduler)</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>accelerate.notebook_launcher(train_loop, args, num_processes<span class="op">=</span><span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+</section>
+<section id="create-a-sampling-function" class="level2">
+<h2 class="anchored" data-anchor-id="create-a-sampling-function">Create a sampling function</h2>
+<p>Once the model has been trained, we can sample the model to create digits. Or more accurately create a sample which is within the learned distribution of the training samples, since some generated samples look like an alien’s numbering system, a mish-mash of the numbers 0-9.</p>
+<p>To sample images, the Diffusers library has several pipelines. However, <a href="https://github.com/huggingface/diffusers/issues/488">I found that these pipelines don’t work for single channel images</a>. So I created a small function which samples the images, with an optional argument for saving off each step. Importantly, the function needs to have a <code>torch.no_grad()</code> decorator so the model doesn’t accumulate the history of the forward passes.</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="at">@torch.no_grad</span>()</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> sample(unet, scheduler,seed,save_process_dir<span class="op">=</span><span class="va">None</span>):</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>    torch.manual_seed(seed)</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> save_process_dir:</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="kw">not</span> os.path.exists(save_process_dir):</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>            os.mkdir(save_process_dir)</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>    scheduler.set_timesteps(<span class="dv">1000</span>)</span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a>    image<span class="op">=</span>torch.randn((<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">32</span>,<span class="dv">32</span>)).to(model.device)</span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a>    num_steps<span class="op">=</span><span class="bu">max</span>(noise_scheduler.timesteps).numpy()</span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> t <span class="kw">in</span> noise_scheduler.timesteps:</span>
+<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a>        model_output<span class="op">=</span>unet(image,t)[<span class="st">'sample'</span>]</span>
+<span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a>        image<span class="op">=</span>scheduler.step(model_output,<span class="bu">int</span>(t),image,generator<span class="op">=</span><span class="va">None</span>)[<span class="st">'prev_sample'</span>]</span>
+<span id="cb26-16"><a href="#cb26-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> save_process_dir:</span>
+<span id="cb26-17"><a href="#cb26-17" aria-hidden="true" tabindex="-1"></a>            save_image<span class="op">=</span>torchvision.transforms.ToPILImage()(image.squeeze(<span class="dv">0</span>))</span>
+<span id="cb26-18"><a href="#cb26-18" aria-hidden="true" tabindex="-1"></a>            save_image.resize((<span class="dv">256</span>,<span class="dv">256</span>)).save(</span>
+<span id="cb26-19"><a href="#cb26-19" aria-hidden="true" tabindex="-1"></a>                os.path.join(save_process_dir,<span class="st">"seed-"</span><span class="op">+</span><span class="bu">str</span>(seed)<span class="op">+</span><span class="st">"_"</span><span class="op">+</span><span class="ss">f"</span><span class="sc">{</span>num_steps<span class="op">-</span>t<span class="sc">.</span>numpy()<span class="sc">:03d}</span><span class="ss">"</span><span class="op">+</span><span class="st">".png"</span>),<span class="bu">format</span><span class="op">=</span><span class="st">"png"</span>)</span>
+<span id="cb26-20"><a href="#cb26-20" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb26-21"><a href="#cb26-21" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> torchvision.transforms.ToPILImage()(image.squeeze(<span class="dv">0</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="sample-some-good-looking-digits" class="level2">
+<h2 class="anchored" data-anchor-id="sample-some-good-looking-digits">Sample some good looking digits!</h2>
+<p>Some samples look quit good…</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>test_image<span class="op">=</span>sample(model,noise_scheduler,<span class="dv">2</span>)</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>test_image.resize((<span class="dv">265</span>,<span class="dv">256</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<figure class="figure">
+<img src="../assets/img/blogs/Diffusing_Digits_files/Diffusion_Digits_3.png" width="15%" class="figure-img">
+</figure>
+<div class="sourceCode" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>test_image<span class="op">=</span>sample(model,noise_scheduler,<span class="dv">5</span>)</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>test_image.resize((<span class="dv">256</span>,<span class="dv">256</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<figure class="figure">
+<img src="../assets/img/blogs/Diffusing_Digits_files/Diffusion_Digits_4.png" width="15%" class="figure-img">
+</figure>
+<div class="sourceCode" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>test_image<span class="op">=</span>sample(model,noise_scheduler,<span class="dv">1991</span>)</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>test_image.resize((<span class="dv">256</span>,<span class="dv">256</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<figure class="figure">
+<img src="../assets/img/blogs/Diffusing_Digits_files/Diffusion_Digits_5.png" width="15%" class="figure-img">
+</figure>
+<p>But others aren’t quite recognizable as a number, but look like they <em>could</em> be number if history went slightly differently…</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>test_image<span class="op">=</span>sample(model,noise_scheduler,<span class="dv">2022</span>)</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>test_image.resize((<span class="dv">256</span>,<span class="dv">256</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<figure class="figure">
+<img src="../assets/img/blogs/Diffusing_Digits_files/Diffusion_Digits_6.png" width="15%" class="figure-img">
+</figure>
+<div class="sourceCode" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>test_image<span class="op">=</span>sample(model,noise_scheduler,<span class="dv">42</span>)</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>test_image.resize((<span class="dv">256</span>,<span class="dv">256</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<figure class="figure">
+<img src="../assets/img/blogs/Diffusing_Digits_files/Diffusion_Digits_7.png" width="15%" class="figure-img">
+</figure>
+
+
+</section>
+
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

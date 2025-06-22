@@ -1,0 +1,18 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  title: "Sean Howard"
+  sidebar:
+    style: docked
+    search: true
+    contents:
+      - text: "posts"
+        href: index.qmd
+
+format:
+  html:
+    theme: cosmo
+    css: _static/styles.css
+    toc: true
